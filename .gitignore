@@ -1,0 +1,29 @@
+# Generated code from protoc / grpc plugins
+gen/
+generated/
+*.pb.go
+*_pb2.py
+*_pb2_grpc.py
+*.pb.cc
+*.pb.h
+*.pb.dart
+
+# Language build output, if generated code is compiled in-place
+bin/
+build/
+target/
+node_modules/
+__pycache__/
+*.pyc
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Nix
+result
+result-*
+.direnv/
