@@ -27,3 +27,6 @@ Thumbs.db
 result
 result-*
 .direnv/
+
+# Python (wireshark/ dissector tests)
+.venv/

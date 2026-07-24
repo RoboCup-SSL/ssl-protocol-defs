@@ -6,8 +6,8 @@ on:
   pull_request:
 
 jobs:
-  validate-protos-compile:
-    name: Protos Compile
+  flake-check:
+    name: Proto Compile + Dissector Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -15,5 +15,5 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
 
-      - name: protoc --proto_path=proto (via make check)
+      - name: nix flake check (proto-compile + wireshark-dissector-test)
         run: nix flake check -L

@@ -15,65 +15,116 @@ See each subfolder for the specific files. Deeper documentation on protocol-leve
 
 ## Licensing
 
-This repo carries multiple licenses, inherited per-file from the source
-repos these definitions were vendored from ([`LICENSE-MIT`](LICENSE-MIT),
-[`LICENSE-GPL-2.0`](LICENSE-GPL-2.0), [`LICENSE-GPL-3.0`](LICENSE-GPL-3.0)):
+This repository uses multiple licenses. Each file's license depends on which
+source repository it was copied from
+([`LICENSE-MIT`](LICENSE-MIT), [`LICENSE-GPL-2.0`](LICENSE-GPL-2.0), [`LICENSE-GPL-3.0`](LICENSE-GPL-3.0)):
 
 | License | Files |
 |---|---|
 | **GPL-2.0** | `proto/gc/ssl_gc_referee_message.proto` |
 | **GPL-3.0** | every other file under `proto/` |
-| **MIT** | everything else in this repo (docs, `Makefile`, `flake.nix`, CI config, etc.) |
+| **MIT** | everything else in this repository (docs, `Makefile`, `flake.nix`, CI config, etc.) |
 
-The SSL committee is pursuing relicensing of the GPL-covered `.proto` files
-to MIT with the original authors; until that's complete, those files remain
-under their current license. **All new contributions to this repo must be
-made under MIT.**
+The SSL committee is working with the original authors to relicense the
+GPL-covered `.proto` files as MIT. Until that work is complete, those files
+remain under their current license. **All new contributions to this
+repository must be made under MIT.**
 
 ## Quick Start
 
-Clone this repo, then point `protoc` (or your language's protobuf plugin) at `proto/` as the include root — every import in this repo is written relative to it, so no other setup is required:
+Clone this repository. Then point `protoc` (or your language's protobuf
+plugin) at `proto/` as the include root. Every import in this repository is
+written relative to that root, so no other setup is required:
 
 ```sh
 protoc --proto_path=proto --python_out=gen $(find proto -name '*.proto')
 ```
 
-Swap `--python_out` for `--cpp_out`, `--go_out`, `--java_out`, etc. depending on your team's language.
+Replace `--python_out` with `--cpp_out`, `--go_out`, `--java_out`, etc.,
+depending on your team's language.
 
-All files currently in this repo are `proto2`, matching the software that authors them. A few adjacent SSL tools (match-stats, log-labeling) use `proto3` instead; if those get vendored in here later, expect a mix.
+All files in this repository currently use `proto2` syntax, matching the
+software that produces them. A few related SSL tools (match-stats,
+log-labeling) use `proto3` instead. If those tools' definitions are added
+here later, this repository will contain a mix of both.
 
 ## Setup for New Teams
 
-Most teams will want these definitions checked out inside their own robot/AI codebase rather than copy-pasted, so updates here can be pulled in with a normal `git submodule update`:
+Most teams should add these definitions as a dependency inside their own
+robot or AI codebase, instead of copying the files directly. This way,
+updates to this repository can be pulled in with a normal
+`git submodule update`:
 
 ```sh
 git submodule add https://github.com/RoboCup-SSL/ssl-protocol-defs.git third_party/ssl-protocol-defs
 git submodule update --init --recursive
 ```
 
-Then point `--proto_path` at `third_party/ssl-protocol-defs/proto` instead. If you're cloning a team repo that already depends on this one, remember `git clone --recurse-submodules` (or run the `update --init` command above after a normal clone).
+Then point `--proto_path` at `third_party/ssl-protocol-defs/proto` instead.
+If you are cloning a team repository that already depends on this one, use
+`git clone --recurse-submodules`, or run the `update --init` command above
+after a normal clone.
 
-**Reference**, if any of this is new:
+**Reference material**, if any of this is new to you:
 
 - [Protocol Buffers documentation](https://protobuf.dev/) — overview and install instructions
-- [Proto2 language guide](https://protobuf.dev/programming-guides/proto2/) — the syntax version used by every file in this repo today
-- [Proto3 language guide](https://protobuf.dev/programming-guides/proto3/) — used by a few adjacent SSL tools, in case those get added here later
-- [protoc releases](https://github.com/protocolbuffers/protobuf/releases) — compiler downloads, if not available via your package manager
-- [Git submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) — what they are, how they differ from a normal clone/dependency
+- [Proto2 language guide](https://protobuf.dev/programming-guides/proto2/) — the syntax version used by every file in this repository today
+- [Proto3 language guide](https://protobuf.dev/programming-guides/proto3/) — used by a few related SSL tools; included in case those definitions are added to this repository later
+- [protoc releases](https://github.com/protocolbuffers/protobuf/releases) — compiler downloads, if not available through your package manager
+- [Git submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) — what they are, and how they differ from a normal clone or dependency
 
 ## Development
 
-This repo uses [Nix](https://nixos.org/) to pin `protoc`/`buf`/`make` to known-good versions, so validation is identical on every machine and in CI.
+This repository uses [Nix](https://nixos.org/) to provide `protoc`, `buf`,
+`make`, `tshark`, and the Python dependencies for dissector testing
+([uv](https://docs.astral.sh/uv/) + [uv2nix](https://github.com/pyproject-nix/uv2nix),
+see `wireshark/pyproject.toml`) at known-good versions. This makes
+validation identical on every machine and in CI.
+
+**Step 1: start a development shell.** This puts every tool listed above on
+your `PATH`.
 
 ```sh
-nix develop        # drops you into a shell with protoc, buf, and make on PATH
-make check          # validates every .proto file under proto/ compiles
+nix develop
 ```
 
-No Nix installed? Install `protoc` yourself and run `make check` directly — the Makefile doesn't require Nix, Nix just guarantees the version.
+**Step 2: run commands from inside that shell.**
 
-`check` is the only Makefile target today; `install`/`test` will be added as the repo grows.
+Validation targets:
+
+```sh
+make compile-protos              # (default target) validates every .proto file under proto/ compiles
+make test-wireshark-dissectors   # regenerates protobuf bindings fresh, then runs the
+                                  # Wireshark dissector tests against synthetic pcaps
+```
+
+Wireshark dissector setup targets:
+
+```sh
+make check-wireshark-dependencies    # confirms tshark is present with protobuf support
+make install-wireshark-dissectors    # sets up the Wireshark dissector, no GUI steps
+make uninstall-wireshark-dissectors  # removes exactly what install added
+```
+
+If Nix is not installed: install `protoc` and `tshark` yourself, and set up
+a Python environment with `scapy` and `protobuf` (see
+`wireshark/pyproject.toml`). Then run the same commands directly. The
+Makefile does not require Nix — Nix only guarantees the tool versions.
 
 ### CI
 
-Every push to `main` and every pull request runs the **Protos Compile** job (`.github/workflows/ci.yml`), which is just `nix flake check` — the same command as above, run in a clean environment. A red check means some `.proto` file in the PR fails to compile; a green one only confirms that, not that the change is otherwise correct (naming, drift vs. upstream, etc. are still manual review for now).
+Every push to `main`, and every pull request, runs `nix flake check` in a
+clean, sandboxed environment with no network access
+(`.github/workflows/ci.yml`). This is the same command shown above. It
+covers two checks:
+
+- **`proto-compile`** — confirms every `.proto` file under `proto/`
+  compiles. A red result means a file in the pull request fails to
+  compile. A green result only confirms that the files compile — it does
+  not confirm the change is otherwise correct. Naming and drift from the
+  upstream source are still checked manually.
+- **`wireshark-dissector-test`** — regenerates protobuf bindings from the
+  current `.proto` files, then runs the Wireshark dissector against
+  synthetic packets built from those bindings. If a schema change breaks
+  an assumption the dissector depends on, such as a message name or field
+  number, this check fails instead of the problem going unnoticed.
