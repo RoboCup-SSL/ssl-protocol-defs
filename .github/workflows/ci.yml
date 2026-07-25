@@ -29,3 +29,59 @@ jobs:
 
       - name: nix build .#checks.wireshark-dissector-test
         run: nix build -L --no-link '.#checks.x86_64-linux.wireshark-dissector-test'
+
+  breaking-check-wire:
+    name: "Breaking Check: Wire Compatibility"
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      # WIRE: binary wire-format compatibility only (field numbers/types/cardinality).
+      # Renames are allowed here on purpose - they don't affect old binaries talking on the wire.
+      # Not required to pass for merge; see README for how to gate a release on this.
+      - name: buf breaking (wire)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -o pipefail
+          nix develop --command bash -c '
+            cd proto &&
+            buf breaking . \
+              --config ../buf-breaking-wire.yaml \
+              --against "../.git#ref=$BASE_SHA,subdir=proto" \
+              --error-format github-actions
+          ' | sed -E 's#^::error file=#::error file=proto/#'
+
+  breaking-check-reflection:
+    name: "Breaking Check: Reflection/JSON Compatibility"
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      # FILE: strictest category - also catches renames, moves between files, and
+      # anything that breaks JSON marshaling / reflection / gRPC method routing by name.
+      # Not required to pass for merge; see README for how to gate a release on this.
+      - name: buf breaking (reflection)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -o pipefail
+          nix develop --command bash -c '
+            cd proto &&
+            buf breaking . \
+              --config ../buf-breaking-reflection.yaml \
+              --against "../.git#ref=$BASE_SHA,subdir=proto" \
+              --error-format github-actions
+          ' | sed -E 's#^::error file=#::error file=proto/#'
