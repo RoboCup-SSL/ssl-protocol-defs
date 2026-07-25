@@ -113,18 +113,21 @@ Makefile does not require Nix — Nix only guarantees the tool versions.
 
 ### CI
 
-Every push to `main`, and every pull request, runs `nix flake check` in a
+Every push to `main`, and every pull request, runs two independent jobs in a
 clean, sandboxed environment with no network access
-(`.github/workflows/ci.yml`). This is the same command shown above. It
-covers two checks:
+(`.github/workflows/ci.yml`), each building one Nix flake check:
 
-- **`proto-compile`** — confirms every `.proto` file under `proto/`
-  compiles. A red result means a file in the pull request fails to
-  compile. A green result only confirms that the files compile — it does
-  not confirm the change is otherwise correct. Naming and drift from the
-  upstream source are still checked manually.
-- **`wireshark-dissector-test`** — regenerates protobuf bindings from the
-  current `.proto` files, then runs the Wireshark dissector against
-  synthetic packets built from those bindings. If a schema change breaks
-  an assumption the dissector depends on, such as a message name or field
-  number, this check fails instead of the problem going unnoticed.
+- **Proto Compile** (`nix build .#checks.proto-compile`) — confirms every
+  `.proto` file under `proto/` compiles. A red result means a file in the
+  pull request fails to compile. A green result only confirms that the
+  files compile — it does not confirm the change is otherwise correct.
+  Naming and drift from the upstream source are still checked manually.
+- **Dissector Tests** (`nix build .#checks.wireshark-dissector-test`) —
+  regenerates protobuf bindings from the current `.proto` files, then runs
+  the Wireshark dissector against synthetic packets built from those
+  bindings. If a schema change breaks an assumption the dissector depends
+  on, such as a message name or field number, this check fails instead of
+  the problem going unnoticed.
+
+The two run as separate jobs, so either can pass or fail independently
+instead of a single combined result.

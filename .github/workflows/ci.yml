@@ -6,8 +6,8 @@ on:
   pull_request:
 
 jobs:
-  flake-check:
-    name: Proto Compile + Dissector Tests
+  proto-compile:
+    name: Proto Compile
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -15,5 +15,17 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
 
-      - name: nix flake check (proto-compile + wireshark-dissector-test)
-        run: nix flake check -L
+      - name: nix build .#checks.proto-compile
+        run: nix build -L --no-link '.#checks.x86_64-linux.proto-compile'
+
+  dissector-tests:
+    name: Dissector Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: nix build .#checks.wireshark-dissector-test
+        run: nix build -L --no-link '.#checks.x86_64-linux.wireshark-dissector-test'
