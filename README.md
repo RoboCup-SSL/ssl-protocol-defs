@@ -117,7 +117,7 @@ Every push to `main`, and every pull request, runs two independent jobs in a
 clean, sandboxed environment with no network access
 (`.github/workflows/ci.yml`), each building one Nix flake check:
 
-- **Proto Compile** (`nix build .#checks.proto-compile`) — confirms every
+- **Protos Compile** (`nix build .#checks.proto-compile`) — confirms every
   `.proto` file under `proto/` compiles. A red result means a file in the
   pull request fails to compile. A green result only confirms that the
   files compile — it does not confirm the change is otherwise correct.
