@@ -6,9 +6,9 @@ Central, authoritative copy of the protobuf definitions used to interface with R
 
 ```
 proto/
-  vision/       Camera detection, field geometry, and the UDP wrapper around them
-  gc/           Referee state, game events, and team/autoref remote control
-  simulation/   Simulator control: robot commands, teleportation, config, errors
+  vision/          Camera detection, field geometry, and the UDP wrapper around them
+  gamecontroller/  Referee state, game events, and team/autoref remote control
+  simulation/      Simulator control: robot commands, teleportation, config, errors
 ```
 
 See each subfolder for the specific files. Deeper documentation on protocol-level details is coming later.
@@ -21,7 +21,7 @@ source repository it was copied from
 
 | License | Files |
 |---|---|
-| **GPL-2.0** | `proto/gc/ssl_gc_referee_message.proto` |
+| **GPL-2.0** | `proto/gamecontroller/ssl_gc_referee_message.proto` |
 | **GPL-3.0** | every other file under `proto/` |
 | **MIT** | everything else in this repository (docs, `Makefile`, `flake.nix`, CI config, etc.) |
 
@@ -34,14 +34,56 @@ repository must be made under MIT.**
 
 Clone this repository. Then point `protoc` (or your language's protobuf
 plugin) at `proto/` as the include root. Every import in this repository is
-written relative to that root, so no other setup is required:
+written relative to that root:
 
 ```sh
-protoc --proto_path=proto --python_out=gen $(find proto -name '*.proto')
+protoc --proto_path=proto --cpp_out=gen $(find proto -name '*.proto')
 ```
 
-Replace `--python_out` with `--cpp_out`, `--go_out`, `--java_out`, etc.,
-depending on your team's language.
+Replace `--cpp_out` with `--go_out`, `--java_out`, etc., depending on your
+team's language.
+
+For Python, see [Python bindings](#python-bindings) below.
+
+### Layout of generated code
+
+protoc derives generated package names from the top-level directories here and
+emits cross-references in the same shape: generated `vision` code refers to
+generated `gamecontroller` code as `gamecontroller/...`. The output directory
+must therefore be on the include or import path for those cross-references to
+resolve.
+
+For C++, add the output directory to the include path.
+[`cmake/SSLProtocolDefs.cmake`](cmake/SSLProtocolDefs.cmake) provides a CMake
+function that does this, and documents why protobuf's own
+`protobuf_generate()` does not work when this repository is a submodule.
+
+### Python bindings
+
+`protoc --python_out` requires its output directory on `sys.path` for the
+generated cross-imports to resolve. That makes `vision`, `gamecontroller` and
+`simulation` top-level module names in the consuming project, and any
+directory added here later becomes a new top-level name.
+
+[`python/python_bindings.py`](python/python_bindings.py) generates the same
+bindings nested inside one package and rewrites the generated cross-imports to
+match:
+
+```sh
+python3 python/python_bindings.py --out-dir gen              # or: make python-bindings
+```
+
+```python
+import sys; sys.path.insert(0, "gen")   # or set PYTHONPATH=gen
+
+from sslproto.vision.ssl_vision_wrapper_pb2 import SSL_WrapperPacket
+from sslproto.gamecontroller.ssl_gc_referee_message_pb2 import Referee
+```
+
+`--package` sets the package name; `--include vision` restricts generation to
+one subdirectory. Only the generated Python changes: the descriptor pool retains
+the canonical file names (`vision/ssl_vision_wrapper.proto`), so wire format
+and reflection are unaffected.
 
 All files in this repository currently use `proto2` syntax, matching the
 software that produces them. A few related SSL tools (match-stats,
@@ -61,6 +103,8 @@ git submodule update --init --recursive
 ```
 
 Then point `--proto_path` at `third_party/ssl-protocol-defs/proto` instead.
+`third_party/` is only a convention; any path works, and projects that consume
+nothing else this way often just use `proto/`.
 If you are cloning a team repository that already depends on this one, use
 `git clone --recurse-submodules`, or run the `update --init` command above
 after a normal clone.
@@ -96,6 +140,13 @@ Validation targets:
 make compile-protos              # (default target) validates every .proto file under proto/ compiles
 make test-wireshark-dissectors   # regenerates protobuf bindings fresh, then runs the
                                   # Wireshark dissector tests against synthetic pcaps
+```
+
+Code generation:
+
+```sh
+make python-bindings             # generates nested Python bindings into gen/sslproto/
+                                  # (override with PYTHON_BINDINGS_OUT / PYTHON_BINDINGS_PACKAGE)
 ```
 
 Wireshark dissector setup targets:

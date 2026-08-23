@@ -19,14 +19,18 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PROTO_ROOT = REPO_ROOT / "proto"
 DISSECTOR = REPO_ROOT / "wireshark" / "ssl-dissector.lua"
+PROTO_PACKAGE = "sslproto"
+
+sys.path.insert(0, str(REPO_ROOT / "python"))
+from python_bindings import generate_python_bindings  # noqa: E402
 
 PROTO_FILES = [
-    "gc/ssl_gc_common.proto",
-    "gc/ssl_gc_geometry.proto",
-    "gc/ssl_gc_game_event.proto",
-    "gc/ssl_gc_referee_message.proto",
-    "gc/ssl_gc_rcon.proto",
-    "gc/ssl_gc_rcon_team.proto",
+    "gamecontroller/ssl_gc_common.proto",
+    "gamecontroller/ssl_gc_geometry.proto",
+    "gamecontroller/ssl_gc_game_event.proto",
+    "gamecontroller/ssl_gc_referee_message.proto",
+    "gamecontroller/ssl_gc_rcon.proto",
+    "gamecontroller/ssl_gc_rcon_team.proto",
     "vision/ssl_vision_detection.proto",
     "vision/ssl_vision_geometry.proto",
     "vision/ssl_vision_wrapper.proto",
@@ -51,29 +55,22 @@ def find_protoc_include_dir(protoc_path: str) -> str:
 
 
 def generate_bindings(workdir: Path) -> Path:
+    """Generate bindings with the same helper consuming projects use.
+
+    Nesting everything under one package keeps proto/vision/ and friends from
+    becoming top-level module names here. See python/python_bindings.py.
+    """
     gen_dir = workdir / "gen"
-    gen_dir.mkdir()
-    protoc = shutil.which("protoc")
-    if not protoc:
-        sys.exit("protoc not found on PATH")
-
-    subprocess.run(
-        [protoc, f"--proto_path={PROTO_ROOT}", f"--python_out={gen_dir}"] + PROTO_FILES,
-        check=True,
-    )
-
-    # protoc names the output package after our proto/gc/ directory, but "gc" is
-    # Python's own garbage-collector module -- rename it and fix the resulting
-    # generated cross-imports so it doesn't get shadowed.
-    (gen_dir / "gc").rename(gen_dir / "sslgc")
-    for py_file in gen_dir.rglob("*.py"):
-        text = py_file.read_text()
-        fixed = text.replace("from gc import", "from sslgc import").replace(
-            "from gc.", "from sslgc."
+    try:
+        generate_python_bindings(
+            out_dir=gen_dir,
+            package=PROTO_PACKAGE,
+            proto_root=PROTO_ROOT,
+            explicit=PROTO_FILES,
+            pyi=False,
         )
-        if fixed != text:
-            py_file.write_text(fixed)
-
+    except RuntimeError as exc:
+        sys.exit(str(exc))
     return gen_dir
 
 
@@ -81,11 +78,14 @@ def build_pcaps(gen_dir: Path, workdir: Path) -> dict:
     sys.path.insert(0, str(gen_dir))
     from scapy.all import Ether, IP, UDP, TCP, Raw, wrpcap
 
-    from vision.ssl_vision_wrapper_pb2 import SSL_WrapperPacket
-    from sslgc.ssl_gc_referee_message_pb2 import Referee, GROUP_PHASE
-    from sslgc.ssl_gc_common_pb2 import Team
-    from sslgc.ssl_gc_rcon_team_pb2 import TeamToController
-    from simulation.ssl_simulation_control_pb2 import SimulatorCommand, SimulatorResponse
+    from sslproto.vision.ssl_vision_wrapper_pb2 import SSL_WrapperPacket
+    from sslproto.gamecontroller.ssl_gc_referee_message_pb2 import Referee, GROUP_PHASE
+    from sslproto.gamecontroller.ssl_gc_common_pb2 import Team
+    from sslproto.gamecontroller.ssl_gc_rcon_team_pb2 import TeamToController
+    from sslproto.simulation.ssl_simulation_control_pb2 import (
+        SimulatorCommand,
+        SimulatorResponse,
+    )
 
     def varint(n):
         out = bytearray()

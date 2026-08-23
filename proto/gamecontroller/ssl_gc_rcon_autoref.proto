@@ -1,7 +1,7 @@
 syntax = "proto2";
 
-import "gc/ssl_gc_game_event.proto";
-import "gc/ssl_gc_rcon.proto";
+import "gamecontroller/ssl_gc_game_event.proto";
+import "gamecontroller/ssl_gc_rcon.proto";
 
 // AutoRefRegistration is the first message that a client must send to the controller to identify itself
 message AutoRefRegistration {
