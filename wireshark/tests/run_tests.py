@@ -33,6 +33,7 @@ PROTO_FILES = [
     "gamecontroller/ssl_gc_rcon_team.proto",
     "vision/ssl_vision_detection.proto",
     "vision/ssl_vision_geometry.proto",
+    "vision/ssl_vp_config.proto",
     "vision/ssl_vision_wrapper.proto",
     "simulation/ssl_simulation_control.proto",
     "simulation/ssl_simulation_config.proto",

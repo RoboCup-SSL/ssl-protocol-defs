@@ -2,12 +2,16 @@ syntax = "proto2";
 import "gamecontroller/ssl_gc_geometry.proto";
 
 enum SSL_VPConfigCameraDriver {
+    // No camera (initial state)
+    DUMMY = 0;
     // FLIR cameras
-    SPINNAKER = 0;
+    SPINNAKER = 1;
     // Video and image files, video4linux2 (e.g. webcams) cameras
-    OPENCV = 1;
+    OPENCV = 2;
     // Bluefox3 cameras
-    MVIMPACT = 2;
+    MVIMPACT = 3;
+    // Firewire cameras
+    DC1394 = 4;
 }
 
 enum SSL_VPConfigCameraWBType {
@@ -18,7 +22,7 @@ enum SSL_VPConfigCameraWBType {
 
 message SSL_VPConfigCamera {
     // Camera driver type. Availability depending on libraries installed.
-    optional SSL_VPConfigCameraDriver driver = 1;
+    optional SSL_VPConfigCameraDriver driver = 1 [default = DUMMY];
 
     // Spinnaker, mvIMPACT or OpenCV(v4l2) camera id
     optional uint32 id = 2 [default = 0];
@@ -63,7 +67,7 @@ message SSL_VPConfigGeometry {
 
     // Enable field line pixel refinement.
     // Disable in cluttered environments when the geometry calibration has failed multiple times in a row.
-    optional bool refinement = 4 [default=true];
+    optional bool refinement = 4 [default=false];
 }
 
 message SSL_VPConfigThresholds {
@@ -134,7 +138,7 @@ enum SSL_VPConfigStreamType {
 
 message SSL_VPConfigStream {
     // If false no network live stream will be encoded and sent.
-    optional bool active = 1 [default=true];
+    optional bool active = 1 [default=false];
     // Type of image to transmit.
     optional SSL_VPConfigStreamType type = 2 [default=RAW];
     // Camera RTP stream destination IP
