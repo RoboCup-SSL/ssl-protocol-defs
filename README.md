@@ -163,17 +163,6 @@ make test-wireshark-dissectors   # regenerates protobuf bindings fresh, then run
 
 ## Licensing
 
-This repository uses multiple licenses. Each file's license depends on which
-source repository it was copied from
-([`LICENSE-MIT`](LICENSE-MIT), [`LICENSE-GPL-2.0`](LICENSE-GPL-2.0), [`LICENSE-GPL-3.0`](LICENSE-GPL-3.0)):
-
-| License | Files |
-|---|---|
-| **GPL-2.0** | `proto/gc/ssl_gc_referee_message.proto` |
-| **GPL-3.0** | every other file under `proto/` |
-| **MIT** | everything else in this repository (docs, `Makefile`, `flake.nix`, CI config, etc.) |
-
-The SSL committee is working with the original authors to relicense the
-GPL-covered `.proto` files as MIT. Until that work is complete, those files
-remain under their current license. **All new contributions to this
-repository must be made under MIT.**
+This repository is licensed under the [MIT License](LICENSE). The `.proto`
+files were previously GPL-licensed; see [RELICENSING.md](RELICENSING.md) for
+details. All contributions must be made under MIT.
