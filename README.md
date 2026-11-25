@@ -1,6 +1,8 @@
 # ssl-protocol-defs
 
-Central, authoritative copy of the protobuf definitions used to interface with RoboCup Small Size League (SSL) software: vision, game controller / referee, and simulation.
+Central, authoritative copy of the protobuf definitions used to interface with RoboCup Small Size League (SSL) software.
+
+This readme targets protocol maintainers. For all other uses and documentation, please see and contribute to the [Wiki](https://github.com/RoboCup-SSL/ssl-protocol-defs/wiki). 
 
 ## Layout
 
@@ -12,23 +14,6 @@ proto/
 ```
 
 See each subfolder for the specific files. Deeper documentation on protocol-level details is coming later.
-
-## Licensing
-
-This repository uses multiple licenses. Each file's license depends on which
-source repository it was copied from
-([`LICENSE-MIT`](LICENSE-MIT), [`LICENSE-GPL-2.0`](LICENSE-GPL-2.0), [`LICENSE-GPL-3.0`](LICENSE-GPL-3.0)):
-
-| License | Files |
-|---|---|
-| **GPL-2.0** | `proto/gamecontroller/ssl_gc_referee_message.proto` |
-| **GPL-3.0** | every other file under `proto/` |
-| **MIT** | everything else in this repository (docs, `Makefile`, `flake.nix`, CI config, etc.) |
-
-The SSL committee is working with the original authors to relicense the
-GPL-covered `.proto` files as MIT. Until that work is complete, those files
-remain under their current license. **All new contributions to this
-repository must be made under MIT.**
 
 ## Quick Start
 
@@ -119,66 +104,76 @@ after a normal clone.
 
 ## Development
 
+### Dependencies
+
 This repository uses [Nix](https://nixos.org/) to provide `protoc`, `buf`,
 `make`, `tshark`, and the Python dependencies for dissector testing
 ([uv](https://docs.astral.sh/uv/) + [uv2nix](https://github.com/pyproject-nix/uv2nix),
 see `wireshark/pyproject.toml`) at known-good versions. This makes
 validation identical on every machine and in CI.
 
-**Step 1: start a development shell.** This puts every tool listed above on
-your `PATH`.
-
 ```sh
 nix develop
 ```
 
-**Step 2: run commands from inside that shell.**
+#### Ubuntu/Debian Manual Install
 
-Validation targets:
+On Ubuntu/Debian, apt covers everything except `buf`:
+
+```sh
+sudo apt install protobuf-compiler make tshark python3-scapy python3-protobuf
+```
+
+`buf` isn't packaged for apt — see [buf's install docs](https://buf.build/docs/installation).
+
+### Compile Protos
 
 ```sh
 make compile-protos              # (default target) validates every .proto file under proto/ compiles
-make test-wireshark-dissectors   # regenerates protobuf bindings fresh, then runs the
-                                  # Wireshark dissector tests against synthetic pcaps
 ```
 
-Code generation:
+### Code Generation
 
 ```sh
 make python-bindings             # generates nested Python bindings into gen/sslproto/
                                   # (override with PYTHON_BINDINGS_OUT / PYTHON_BINDINGS_PACKAGE)
 ```
 
-Wireshark dissector setup targets:
+### Proto Utilities
 
 ```sh
-make check-wireshark-dependencies    # confirms tshark is present with protobuf support
-make install-wireshark-dissectors    # sets up the Wireshark dissector, no GUI steps
-make uninstall-wireshark-dissectors  # removes exactly what install added
+cd proto
+buf lint .
+buf breaking . --config ../buf-breaking-wire.yaml --against "../.git#subdir=proto,ref=HEAD"
 ```
 
-If Nix is not installed: install `protoc` and `tshark` yourself, and set up
-a Python environment with `scapy` and `protobuf` (see
-`wireshark/pyproject.toml`). Then run the same commands directly. The
-Makefile does not require Nix — Nix only guarantees the tool versions.
+`buf breaking` also has a `buf-breaking-reflection.yaml` config for the
+stricter reflection/JSON compatibility check (see `ci.yml`). Swap `ref=HEAD`
+for the commit/branch you want to diff against.
 
-### CI
+### Wireshark Dissector
 
-Every push to `main`, and every pull request, runs two independent jobs in a
-clean, sandboxed environment with no network access
-(`.github/workflows/ci.yml`), each building one Nix flake check:
+A wireshark dissector is provided to help debug league tools and to capture and share network level misbehavior. Filter non-ssl packets with `frame.protocols contains "ssl_"`. View the [wireshark dissector readme](./wireshark/README.md) for more info.
 
-- **Protos Compile** (`nix build .#checks.proto-compile`) — confirms every
-  `.proto` file under `proto/` compiles. A red result means a file in the
-  pull request fails to compile. A green result only confirms that the
-  files compile — it does not confirm the change is otherwise correct.
-  Naming and drift from the upstream source are still checked manually.
-- **Dissector Tests** (`nix build .#checks.wireshark-dissector-test`) —
-  regenerates protobuf bindings from the current `.proto` files, then runs
-  the Wireshark dissector against synthetic packets built from those
-  bindings. If a schema change breaks an assumption the dissector depends
-  on, such as a message name or field number, this check fails instead of
-  the problem going unnoticed.
+```sh
+make install-wireshark-dissectors    # sets up the Wireshark dissector, no GUI steps
+make uninstall-wireshark-dissectors  # removes exactly what install added
+make test-wireshark-dissectors   # regenerates protobuf bindings fresh, then runs the
+```
 
-The two run as separate jobs, so either can pass or fail independently
-instead of a single combined result.
+## Licensing
+
+This repository uses multiple licenses. Each file's license depends on which
+source repository it was copied from
+([`LICENSE-MIT`](LICENSE-MIT), [`LICENSE-GPL-2.0`](LICENSE-GPL-2.0), [`LICENSE-GPL-3.0`](LICENSE-GPL-3.0)):
+
+| License | Files |
+|---|---|
+| **GPL-2.0** | `proto/gc/ssl_gc_referee_message.proto` |
+| **GPL-3.0** | every other file under `proto/` |
+| **MIT** | everything else in this repository (docs, `Makefile`, `flake.nix`, CI config, etc.) |
+
+The SSL committee is working with the original authors to relicense the
+GPL-covered `.proto` files as MIT. Until that work is complete, those files
+remain under their current license. **All new contributions to this
+repository must be made under MIT.**
